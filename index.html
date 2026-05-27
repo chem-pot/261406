@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔬 주기율표 시뮬레이션 (1~20번)</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
+            min-height: 100vh;
+            padding: 20px;
+            color: white;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 2rem;
+            margin-bottom: 8px;
+            color: #e0e0ff;
+            text-shadow: 0 0 20px rgba(100,150,255,0.8);
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #aac;
+            margin-bottom: 25px;
+            font-size: 0.95rem;
+        }
+
+        /* 범례 */
+        .legend {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 16px;
+            margin-bottom: 25px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            color: #ccd;
+        }
+
+        .legend-color {
+            width: 22px;
+            height: 22px;
+            border-radius: 5px;
+        }
+
+        /* 원소 타입별 색상 - 3가지만 */
+        .metal     { background: linear-gradient(135deg, #b71c1c, #e53935); }
+        .nonmetal  { background: linear-gradient(135deg, #1b5e20, #43a047); }
+        .metalloid { background: linear-gradient(135deg, #0d47a1, #1e88e5); }
+
+        /* 족 번호 + 주기 레이블 래퍼 */
+        .table-wrapper {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .group-labels {
+            display: grid;
+            grid-template-columns: 28px repeat(8, 1fr);
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+
+        .group-lbl {
+            text-align: center;
+            font-size: 0.72rem;
+            color: #7788aa;
+            font-weight: bold;
+        }
+
+        /* 주기율표 본체 */
+        .table-rows {
+            display: grid;
+            grid-template-columns: 28px repeat(8, 1fr);
+            gap: 8px;
+            row-gap: 8px;
+        }
+
+        .period-lbl {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.72rem;
+            color: #7788aa;
+            font-weight: bold;
+        }
+
+        .element {
+            aspect-ratio: 1;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s, box-shadow 0.2s;
+            border: 2px solid rgba(255,255,255,0.15);
+            position: relative;
+        }
+
+        .element:hover {
+            transform: scale(1.12);
+            box-shadow: 0 0 20px rgba(255,255,255,0.5);
+            z-index: 10;
+            border-color: white;
+        }
+
+        .element .number {
+            font-size: 0.6rem;
+            color: rgba(255,255,255,0.8);
+            line-height: 1;
+        }
+
+        .element .symbol {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: white;
+            line-height: 1.1;
+        }
+
+        .element .name {
+            font-size: 0.5rem;
+            color: rgba(255,255,255,0.85);
+            line-height: 1;
+        }
+
+        .empty {
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        /* 모달 */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: linear-gradient(135deg, #1e1e3f, #2a2a5a);
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 480px;
+            width: 90%;
+            border: 2px solid rgba(150,150,255,0.4);
+            box-shadow: 0 0 50px rgba(100,100,255,0.3);
+            position: relative;
+            animation: modalIn 0.3s ease;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        @keyframes modalIn {
+            from { transform: scale(0.7); opacity: 0; }
+            to   { transform: scale(1);   opacity: 1; }
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            margin-bottom: 20px;
+        }
+
+        .modal-symbol-box {
+            width: 75px;
+            height: 75px;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .modal-symbol-box .m-number {
+            font-size: 0.75rem;
+            color: rgba(255,255,255,0.8);
+        }
+
+        .modal-symbol-box .m-symbol {
+            font-size: 2.2rem;
+            font-weight: bold;
+            color: white;
+            line-height: 1.1;
+        }
+
+        .modal-symbol-box .m-name {
+            font-size: 0.65rem;
+            color: rgba(255,255,255,0.85);
+        }
+
+        .modal-title-area h2 {
+            font-size: 1.5rem;
+            color: #c8d8ff;
+        }
+
+        .modal-title-area .type-badge {
+            display: inline-block;
+            padding: 3px 12px;
+            border-radius: 20px;
+            font-size: 0.78rem;
+            margin-top: 6px;
+            color: white;
+            font-weight: bold;
+        }
+
+        .badge-metal     { background: rgba(229, 57, 53, 0.5);  border: 1px solid #e53935; }
+        .badge-nonmetal  { background: rgba(67, 160, 71, 0.5);  border: 1px solid #43a047; }
+        .badge-metalloid { background: rgba(30, 136, 229, 0.5); border: 1px solid #1e88e5; }
+
+        .modal-title-area .mass {
+            font-size: 0.8rem;
+            color: #aac;
+            margin-top: 4px;
+        }
+
+        .section {
+            background: rgba(255,255,255,0.06);
+            border-radius: 12px;
+            padding: 14px;
+            margin-bottom: 12px;
+            border-left: 3px solid;
+        }
+
+        .section.properties { border-color: #64b5f6; }
+        .section.usage      { border-color: #81c784; }
+        .section.fun        { border-color: #ffb74d; }
+
+        .section h3 {
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+        }
+
+        .section.properties h3 { color: #64b5f6; }
+        .section.usage h3      { color: #81c784; }
+        .section.fun h3        { color: #ffb74d; }
+
+        .section p {
+            font-size: 0.82rem;
+            line-height: 1.6;
+            color: #ccd;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 14px; right: 18px;
+            background: none;
+            border: none;
+            color: #aab;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .close-btn:hover { color: white; }
+
+        .hint {
+            text-align: center;
+            color: #778;
+            font-size: 0.8rem;
+            margin-top: 14px;
+        }
+
+        @media (max-width: 500px) {
+            .element .symbol { font-size: 1rem; }
+            .element .name   { font-size: 0.4rem; }
+            .element .number { font-size: 0.5rem; }
+            h1 { font-size: 1.4rem; }
+            .table-rows, .group-labels {
+                grid-template-columns: 20px repeat(8, 1fr);
+                gap: 5px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<h1>🔬 주기율표 시뮬레이션</h1>
+<p class="subtitle">원소를 클릭하면 성질과 실생활 사례를 알 수 있어요! (1~20번)</p>
+
+<!-- 범례 -->
+<div class="legend">
+    <div class="legend-item">
+        <div class="legend-color metal"></div>
+        금속
+    </div>
+    <div class="legend-item">
+        <div class="legend-color nonmetal"></div>
+        비금속
+    </div>
+    <div class="legend-item">
+        <div class="legend-color metalloid"></div>
+        준금속
+    </div>
+</div>
+
+<!-- 주기율표 -->
+<div class="table-wrapper">
+
+    <!-- 족 번호 -->
+    <div class="group-labels">
+        <div></div>
+        <div class="group-lbl">1족</div>
+        <div class="group-lbl">2족</div>
+        <div class="group-lbl">13족</div>
+        <div class="group-lbl">14족</div>
+        <div class="group-lbl">15족</div>
+        <div class="group-lbl">16족</div>
+        <div class="group-lbl">17족</div>
+        <div class="group-lbl">18족</div>
+    </div>
+
+    <!-- 본체 -->
+    <div class="table-rows" id="tableRows"></div>
+
+</div>
+
+<p class="hint">💡 원소 카드를 클릭해 보세요!</p>
+
+<!-- 모달 -->
+<div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+        <button class="close-btn" onclick="closeModal()">✕</button>
+        <div class="modal-header">
+            <div class="modal-symbol-box" id="modalSymbolBox">
+                <span class="m-number" id="mNumber"></span>
+                <span class="m-symbol" id="mSymbol"></span>
+                <span class="m-name"   id="mName"></span>
+            </div>
+            <div class="modal-title-area">
+                <h2 id="mFullName"></h2>
+                <div class="type-badge" id="mTypeBadge"></div>
+                <div class="mass" id="mMass"></div>
+            </div>
+        </div>
+        <div class="section properties">
+            <h3>⚗️ 주요 성질</h3>
+            <p id="mProperties"></p>
+        </div>
+        <div class="section usage">
+            <h3>🌍 실생활에서의 쓰임새</h3>
+            <p id="mUsage"></p>
+        </div>
+        <div class="section fun">
+            <h3>💡 알고 있었나요?</h3>
+            <p id="mFun"></p>
+        </div>
+    </div>
+</div>
+
+<script>
+// ===================== 원소 데이터 =====================
+// typeClass: "metal" | "nonmetal" | "metalloid"
+const elements = {
+    1:  {
+        symbol: "H", name: "수소", fullName: "수소 (Hydrogen)",
+        type: "비금속", typeClass: "nonmetal", mass: "원자량: 1.008",
+        properties: "가장 가볍고 우주에서 가장 많은 원소예요. 상온에서 무색·무취의 기체이고, 공기 중에서 잘 타는 성질(가연성)이 있어요. 혼자 있을 땐 H₂(수소 분자) 형태로 존재해요.",
+        usage: "수소 자동차의 연료로 사용돼요. 물(H₂O)의 구성 원소이기도 하고, 암모니아(비료) 만들 때도 꼭 필요해요.",
+        fun: "우주 전체 원자의 약 75%가 수소예요! 태양도 사실 수소가 핵융합해서 빛과 열을 내는 거랍니다. ☀️"
+    },
+    2:  {
+        symbol: "He", name: "헬륨", fullName: "헬륨 (Helium)",
+        type: "비금속", typeClass: "nonmetal", mass: "원자량: 4.003",
+        properties: "다른 원소와 거의 반응을 안 하는 비활성 기체예요. 수소 다음으로 가벼운 원소이고 무색·무취 기체랍니다.",
+        usage: "풍선이나 비행선에 넣어요(수소와 달리 불이 안 붙어서 안전!). MRI 기계를 냉각하는 데도 쓰이고, 심해 잠수부들이 산소와 섞어 호흡하기도 해요.",
+        fun: "헬륨을 마시면 목소리가 높아지는 건 다들 알죠? 헬륨이 공기보다 가벼워서 소리의 속도가 빨라지기 때문이에요! 🎈"
+    },
+    3:  {
+        symbol: "Li", name: "리튬", fullName: "리튬 (Lithium)",
+        type: "금속", typeClass: "metal", mass: "원자량: 6.941",
+        properties: "금속 중 가장 가벼워요. 물과 반응하면 수소 기체가 나오고, 공기 중에서 쉽게 산화돼서 석유 속에 보관해요. 은백색 금속이에요.",
+        usage: "스마트폰·노트북·전기차 배터리(리튬 이온 전지)에 쓰여요. 지금 이 순간에도 핸드폰 속에 리튬이 들어있어요!",
+        fun: "리튬은 너무 가벼워서 물 위에 떠요! 그런데 물에 닿으면 격렬하게 반응해서 위험하답니다. ⚡"
+    },
+    4:  {
+        symbol: "Be", name: "베릴륨", fullName: "베릴륨 (Beryllium)",
+        type: "금속", typeClass: "metal", mass: "원자량: 9.012",
+        properties: "단단하고 가벼운 금속이에요. 독성이 있어서 취급 시 주의가 필요해요. 녹는점이 꽤 높고 열을 잘 전달해요.",
+        usage: "우주 망원경이나 항공기 부품처럼 가볍고 강한 소재가 필요한 곳에 사용해요. 에메랄드·아쿠아마린 같은 보석에도 베릴륨이 들어있어요.",
+        fun: "에메랄드의 초록색, 아쿠아마린의 파란색 모두 베릴륨이 포함된 광물에서 나와요. 보석 속에 숨은 원소! 💎"
+    },
+    5:  {
+        symbol: "B", name: "붕소", fullName: "붕소 (Boron)",
+        type: "준금속", typeClass: "metalloid", mass: "원자량: 10.81",
+        properties: "금속과 비금속의 중간 성질을 가진 준금속이에요. 단단하지만 부서지기 쉽고, 반도체 성질도 있어요.",
+        usage: "내열 유리(파이렉스 유리)에 들어가서 급격한 온도 변화에도 깨지지 않게 해줘요. 세탁용 붕사, 붕산은 소독약이나 방부제로도 써요.",
+        fun: "실험실 유리관이나 내열 냄비의 유리 뚜껑이 뜨거운 데서도 안 깨지는 이유가 바로 붕소 덕분이에요! 🧪"
+    },
+    6:  {
+        symbol: "C", name: "탄소", fullName: "탄소 (Carbon)",
+        type: "비금속", typeClass: "nonmetal", mass: "원자량: 12.01",
+        properties: "같은 원소인데 다이아몬드(초강력)와 흑연(연필심, 미끌미끌)처럼 완전히 다른 형태로 존재할 수 있어요. 이걸 '동소체'라고 해요. 생명체의 기본 원소예요.",
+        usage: "연필심은 흑연(탄소), 다이아몬드는 보석·절삭 공구, 숯은 바베큐·정수 필터, CO₂(이산화탄소)는 탄산음료에 들어가요.",
+        fun: "연필심(흑연)과 다이아몬드는 둘 다 순수한 탄소인데 왜 이렇게 달라요? 원자 배열 구조가 다르기 때문이에요! ✏️💎"
+    },
+    7:  {
+        symbol: "N", name: "질소", fullName: "질소 (Nitrogen)",
+        type: "비금속", typeClass: "nonmetal", mass: "원자량: 14.01",
+        properties: "우리가 마시는 공기의 약 78%가 질소예요. 무색·무취 기체이고, N₂ 형태로 매우 안정적이라 반응을 잘 안 해요.",
+        usage: "과자 봉지 안에 질소를 넣어서 내용물이 산화·부서지지 않게 해요. 비료의 핵심 원소이고, 액체 질소(-196°C)는 식품 냉동이나 의학에 써요.",
+        fun: "과자 봉지가 빵빵한 이유? 맛 보호를 위해 질소 기체를 채웠기 때문이에요! 빈 것처럼 보여도 역할이 있답니다. 🍟"
+    },
+    8:  {
+        symbol: "O", name: "산소", fullName: "산소 (Oxygen)",
+        type: "비금속", typeClass: "nonmetal", mass: "원자량: 16.00",
+        properties: "공기의 약 21%를 차지해요. 다른 물질과 잘 반응(산화)하고, 연소 반응에 꼭 필요해요. 물(H₂O)의 구성 원소이기도 해요.",
+        usage: "우리가 숨 쉬는 데 필수! 병원에서 환자에게 산소를 공급하고, 용접할 때 높은 온도를 만들기 위해 산소를 사용해요.",
+        fun: "철이 녹슬고, 사과가 갈변하고, 불이 타는 현상이 모두 산소가 관여한 '산화 반응'이에요. 산소 없이는 불도 못 켜요! 🔥"
+    },
+    9:  {
+        symbol: "F", name: "플루오린", fullName: "플루오린 (Fluorine)",
+        type: "비금속", typeClass: "nonmetal", mass: "원자량: 19.00",
+        properties: "모든 원소 중 반응성이 가장 강해요! 거의 모든 물질과 반응해요. 연한 노란색 기체이고 독성이 있어요.",
+        usage: "치약에 들어가는 불소(플루오린)가 충치를 예방해요. 프라이팬 코팅(테플론)에도 플루오린이 포함돼 음식이 눌어붙지 않게 해줘요.",
+        fun: "매일 쓰는 치약 속에 플루오린이 있어요! 그리고 프라이팬의 코팅도 플루오린 화합물이랍니다. 이미 플루오린과 친했네요! 🦷"
+    },
+    10: {
+        symbol: "Ne", name: "네온", fullName: "네온 (Neon)",
+        type: "비금속", typeClass: "nonmetal", mass: "원자량: 20.18",
+        properties: "비활성 기체로 다른 원소와 거의 반응하지 않아요. 무색·무취 기체이고, 전기를 통하면 특유의 빨간빛을 내요.",
+        usage: "네온사인! 유리관에 네온을 넣고 전기를 흘리면 빨간빛이 나요. 헬륨·아르곤과 함께 레이저에도 사용돼요.",
+        fun: "네온사인이 '네온'이라 불리는 이유는 실제로 네온 기체가 들어있기 때문이에요. 다양한 색의 사인은 다른 기체를 쓰기도 해요! 💡"
+    },
+    11: {
+        symbol: "Na", name: "나트륨", fullName: "나트륨 (Sodium)",
+        type: "금속", typeClass: "metal", mass: "원자량: 22.99",
+        properties: "은백색의 무른 금속이에요. 물과 격렬히 반응해서 수소 기체를 내고, 공기 중에서도 빠르게 산화돼요. 칼로 쉽게 잘릴 만큼 부드러워요.",
+        usage: "소금(NaCl, 염화 나트륨)의 구성 원소예요. 우리 몸의 체액 균형 유지에 중요하고, 나트륨 램프는 도로 가로등에 사용돼요.",
+        fun: "소금이 NaCl인데, Na(나트륨)이 있어서 영어로 Sodium이에요. 원소기호 Na는 라틴어 Natrium에서 왔어요. 소금 속에 금속이?! 🧂"
+    },
+    12: {
+        symbol: "Mg", name: "마그네슘", fullName: "마그네슘 (Magnesium)",
+        type: "금속", typeClass: "metal", mass: "원자량: 24.31",
+        properties: "가볍고 은백색인 금속이에요. 불에 붙으면 아주 밝은 흰빛을 내며 타요. 알루미늄과 합금하면 가볍고 강해요.",
+        usage: "항공기·자동차 부품에 쓰이고, 불꽃놀이의 흰색 불꽃이 마그네슘 때문이에요. 우리 몸에서도 근육 수축에 꼭 필요한 무기질이에요.",
+        fun: "예전에 사진 찍을 때 '마그네슘 플래시'로 밝은 빛을 만들었어요. 마그네슘이 타면 정말 눈 뜨기 힘들 만큼 밝아요! 📸"
+    },
+    13: {
+        symbol: "Al", name: "알루미늄", fullName: "알루미늄 (Aluminum)",
+        type: "금속", typeClass: "metal", mass: "원자량: 26.98",
+        properties: "가볍고 부드러운 은백색 금속이에요. 표면에 산화막이 생겨 잘 부식되지 않아요. 전기가 잘 통해요.",
+        usage: "음료수 캔, 알루미늄 포일, 비행기·자전거 프레임에 사용해요. 전선에도 쓰이고, 창문 틀도 알루미늄이 많아요.",
+        fun: "알루미늄 캔을 재활용하면 새 알루미늄을 만드는 것보다 에너지가 95%나 절약돼요! 분리수거가 진짜 중요한 이유랍니다. ♻️"
+    },
+    14: {
+        symbol: "Si", name: "규소", fullName: "규소 (Silicon)",
+        type: "준금속", typeClass: "metalloid", mass: "원자량: 28.09",
+        properties: "지구 지각에서 산소 다음으로 많은 원소예요. 반도체 성질이 있어서 전기를 조건에 따라 통하게도, 안 통하게도 할 수 있어요.",
+        usage: "스마트폰·컴퓨터의 반도체 칩(CPU, 메모리)의 핵심 소재예요. 유리·시멘트의 원료이기도 하고, 태양전지에도 사용해요.",
+        fun: "미국의 IT 산업 중심지를 '실리콘 밸리'라고 부르는 이유가 규소(Silicon) 때문이에요! 우리가 쓰는 모든 전자기기는 규소 덕분. 💻"
+    },
+    15: {
+        symbol: "P", name: "인", fullName: "인 (Phosphorus)",
+        type: "비금속", typeClass: "nonmetal", mass: "원자량: 30.97",
+        properties: "황린(흰인)과 적린(붉은 인) 등 여러 동소체가 있어요. 황린은 공기 중에서 자연 발화해요! 반응성이 커요.",
+        usage: "비료의 핵심 원소(질소·인·칼륨)예요. 성냥 옆면에 붉은 인이 있어요. 우리 몸의 뼈와 DNA의 구성 성분이기도 해요.",
+        fun: "성냥을 그어서 불이 붙는 원리에 인(P)이 관여해요! 그리고 사람 몸에도 인이 꽤 많이 있답니다. 🦴"
+    },
+    16: {
+        symbol: "S", name: "황", fullName: "황 (Sulfur)",
+        type: "비금속", typeClass: "nonmetal", mass: "원자량: 32.06",
+        properties: "노란색 고체예요. 타면 이산화황(SO₂) 기체가 나오는데, 이게 자극적인 냄새와 산성비의 원인이에요. 물에 잘 안 녹아요.",
+        usage: "화약, 성냥 제조에 사용하고, 고무를 단단하게 만드는 '가황처리'에 써요. 온천의 독특한 냄새가 황 화합물 때문이에요.",
+        fun: "온천에서 맡는 그 '계란 썩은 냄새'는 황화수소(H₂S) 때문이에요. 황이 포함된 화합물에서 나는 냄새예요! 🌋"
+    },
+    17: {
+        symbol: "Cl", name: "염소", fullName: "염소 (Chlorine)",
+        type: "비금속", typeClass: "nonmetal", mass: "원자량: 35.45",
+        properties: "노란빛 기체로 독성이 있고 자극적인 냄새가 나요. 살균·소독 능력이 뛰어나요. 반응성이 강한 할로젠 원소예요.",
+        usage: "수영장 물 소독, 수돗물 정화에 사용해요. 소금(NaCl)의 구성 원소이고, PVC 플라스틱을 만들 때도 써요.",
+        fun: "수영장 특유의 냄새가 염소 냄새예요! 소독 효과가 있어서 물속 세균을 없애준답니다. 안전하게 수영할 수 있는 이유! 🏊"
+    },
+    18: {
+        symbol: "Ar", name: "아르곤", fullName: "아르곤 (Argon)",
+        type: "비금속", typeClass: "nonmetal", mass: "원자량: 39.95",
+        properties: "비활성 기체 중 지구 대기에 가장 많아요(약 0.93%). 다른 원소와 거의 반응하지 않아요. 무색·무취 기체예요.",
+        usage: "형광등·백열전구 안에 넣어 필라멘트가 빨리 타지 않게 해요. 용접할 때 금속이 산화되지 않게 보호 기체로 사용해요.",
+        fun: "지금 켜져 있는 형광등이나 전구 안에 아르곤이 들어있어요! 아르곤이 없으면 전구 수명이 훨씬 짧아진답니다. 💡"
+    },
+    19: {
+        symbol: "K", name: "칼륨", fullName: "칼륨 (Potassium)",
+        type: "금속", typeClass: "metal", mass: "원자량: 39.10",
+        properties: "무른 은백색 금속이에요. 물과 매우 격렬히 반응하고, 공기 중에서도 빠르게 산화돼요. 반응성이 나트륨보다 강해요.",
+        usage: "비료(질소·인·칼륨)의 필수 성분이에요. 우리 몸 세포의 전기 신호(신경·근육) 전달에 꼭 필요해요. 바나나에 칼륨이 풍부해요.",
+        fun: "바나나를 먹으면 근육 경련에 좋다는 말, 들어봤죠? 바나나에 칼륨이 많아서예요! 운동 후 바나나 하나, 과학적으로 맞아요. 🍌"
+    },
+    20: {
+        symbol: "Ca", name: "칼슘", fullName: "칼슘 (Calcium)",
+        type: "금속", typeClass: "metal", mass: "원자량: 40.08",
+        properties: "은백색 금속이에요. 물과 반응해 수산화칼슘과 수소를 만들어요. 지구 지각에 다섯 번째로 많은 원소예요.",
+        usage: "뼈와 치아의 주성분(인산칼슘)이에요. 시멘트·석회의 원료이고, 두부 만들 때 간수(염화칼슘)를 사용해요. 우유에 칼슘 풍부!",
+        fun: "성장기에 우유를 많이 마시면 키가 큰다고 하죠? 바로 칼슘 때문이에요! 뼈를 튼튼하게 만드는 핵심 원소랍니다. 🥛"
+    }
+};
+
+// ===================== 주기율표 레이아웃 =====================
+const tableData = [
+    { period: 1, cells: [1,    null, null, null, null, null, null, 2   ] },
+    { period: 2, cells: [3,    4,    5,    6,    7,    8,    9,    10  ] },
+    { period: 3, cells: [11,   12,   13,   14,   15,   16,   17,   18  ] },
+    { period: 4, cells: [19,   20,   null, null, null, null, null, null] },
+];
+
+function buildTable() {
+    const container = document.getElementById('tableRows');
+
+    tableData.forEach(row => {
+        // 주기 레이블
+        const periodLabel = document.createElement('div');
+        periodLabel.classList.add('period-lbl');
+        periodLabel.textContent = row.period + '주기';
+        container.appendChild(periodLabel);
+
+        // 각 셀
+        row.cells.forEach(num => {
+            const div = document.createElement('div');
+            if (num === null) {
+                div.classList.add('element', 'empty');
+                div.innerHTML = '&nbsp;';
+            } else {
+                const el = elements[num];
+                div.classList.add('element', el.typeClass);
+                div.innerHTML = `
+                    <span class="number">${num}</span>
+                    <span class="symbol">${el.symbol}</span>
+                    <span class="name">${el.name}</span>
+                `;
+                div.addEventListener('click', () => openModal(num));
+                div.setAttribute('title', el.name);
+            }
+            container.appendChild(div);
+        });
+    });
+}
+
+// ===================== 모달 열기/닫기 =====================
+function openModal(num) {
+    const el = elements[num];
+
+    document.getElementById('mNumber').textContent     = num;
+    document.getElementById('mSymbol').textContent     = el.symbol;
+    document.getElementById('mName').textContent       = el.name;
+    document.getElementById('mFullName').textContent   = el.fullName;
+    document.getElementById('mMass').textContent       = el.mass;
+    document.getElementById('mProperties').textContent = el.properties;
+    document.getElementById('mUsage').textContent      = el.usage;
+    document.getElementById('mFun').textContent        = el.fun;
+
+    // 배지
+    const badge = document.getElementById('mTypeBadge');
+    badge.textContent = el.type;
+    badge.className = 'type-badge badge-' + el.typeClass;
+
+    // 심볼 박스 색상
+    document.getElementById('modalSymbolBox').className = 'modal-symbol-box ' + el.typeClass;
+
+    document.getElementById('modalOverlay').classList.add('active');
+}
+
+function closeModal() {
+    document.getElementById('modalOverlay').classList.remove('active');
+}
+
+document.getElementById('modalOverlay').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+});
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeModal();
+});
+
+buildTable();
+</script>
+</body>
+</html>
